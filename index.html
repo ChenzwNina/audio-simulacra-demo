@@ -348,7 +348,14 @@
         stableDuration = Math.max(stableDuration, duration, seekableEnd, audio.currentTime || 0);
         return stableDuration;
       };
-      const displayDuration = () => expectedDuration > 0 ? expectedDuration : bestKnownDuration();
+      // Prefer the browser-reported duration for file-based MP3s (matches real decode end).
+      // Fall back to expectedDuration when metadata is missing (e.g. some embedded streams).
+      const displayDuration = () => {
+        const meta = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+        if (meta > 0) return meta;
+        if (expectedDuration > 0) return expectedDuration;
+        return bestKnownDuration();
+      };
 
       const syncTime = () => {
         const dur = displayDuration();
