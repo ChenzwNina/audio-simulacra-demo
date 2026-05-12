@@ -57,8 +57,8 @@
             <button class="play" type="button">Play</button>
             <input type="range" min="0" max="1000" value="0" step="1" aria-label="Seek authentic imperfect" />
             <div class="time">0:00 / 0:00</div>
-            <audio preload="metadata">
-              <source src="audio/topic2-authentic.mp3" type="audio/mpeg" />
+            <audio preload="metadata" playsinline>
+              <source src="audio/conversation.mp3" type="audio/mpeg" />
             </audio>
           </div>
 
@@ -184,6 +184,7 @@
       let dragging = false;
       let stableDuration = 0;
       const expectedDurationByLabel = {
+        'Seek authentic imperfect': 136.988254
       };
       const expectedDuration = expectedDurationByLabel[sliderLabel] || 0;
 
@@ -213,18 +214,40 @@
         btn.textContent = audio.paused ? 'Play' : 'Pause';
       };
 
+      const showAudioError = () => {
+        const code = audio.error ? audio.error.code : 0;
+        let msg = 'Audio failed to load';
+        if (code === 1) msg = 'Audio loading was aborted';
+        if (code === 2) msg = 'Network error while loading audio';
+        if (code === 3) msg = 'Audio decoding failed';
+        if (code === 4) msg = 'Audio file missing or unsupported format';
+        if (window.location.protocol === 'file:') {
+          msg += '. Try: run a local server in this folder (python3 -m http.server) and open http://localhost:8000/';
+        }
+        time.textContent = msg;
+        btn.textContent = 'Play';
+      };
+
+      audio.addEventListener('error', showAudioError);
+
       btn.addEventListener('click', () => {
         if (!audio.paused) {
           audio.pause();
           return;
         }
-        audio.play().catch(() => {
-          // Retry after forcing a reload for environments with flaky local file resolution.
+        const playOnce = () => audio.play();
+        const playWithReload = () => {
           audio.load();
-          audio.play().catch(() => {
-            time.textContent = 'Unable to load audio file';
+          return audio.play();
+        };
+        playOnce()
+          .catch(() => playWithReload())
+          .catch(() => {
+            time.textContent = 'Unable to play audio';
+            if (window.location.protocol === 'file:') {
+              time.textContent += ' — use http://localhost (see console)';
+            }
           });
-        });
       });
 
       slider.addEventListener('input', () => {
